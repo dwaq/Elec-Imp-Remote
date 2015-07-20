@@ -16,7 +16,6 @@
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 
-// used to store states for RX IC unlock timing
 typedef enum
 {
 	DECREMENT = 0,
@@ -231,6 +230,58 @@ int main(void)
 			
 				LCD_SetTextColor(LCD_COLOR_BLUE);
 				LCD_DrawRect(x1_r_d, y1_r_d, y2_r_d-y1_r_d, x2_r_d-x1_r_d);
+    }
+		
+		//  2 cups
+		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_2_c) && (TP_State->Y >= y1_2_c) && (TP_State->X >= x1_2_c) && (TP_State->X <= x2_2_c))
+    {
+			/* Clear the LCD */ 
+			LCD_Clear(LCD_COLOR_WHITE);
+			
+			LCD_SetFont(&Font16x24);
+			LCD_SetTextColor(LCD_COLOR_BLACK);
+			LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew 2.");
+			LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
+						
+			LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
+			
+			LCD_SetTextColor(LCD_COLOR_BLUE);
+			#define thanks_x_shift 16*2
+			LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
+    }
+		// 3 cups
+		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_3_c) && (TP_State->Y >= y1_3_c) && (TP_State->X >= x1_3_c) && (TP_State->X <= x2_3_c))
+    {
+			/* Clear the LCD */ 
+			LCD_Clear(LCD_COLOR_WHITE);
+			
+			LCD_SetFont(&Font16x24);
+			LCD_SetTextColor(LCD_COLOR_BLACK);
+			LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew 3.");
+			LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
+						
+			LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
+			
+			LCD_SetTextColor(LCD_COLOR_BLUE);
+			#define thanks_x_shift 16*2
+			LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
+    }
+		// 4 cups
+		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_4_c) && (TP_State->Y >= y1_4_c) && (TP_State->X >= x1_4_c) && (TP_State->X <= x2_4_c))
+    {
+			/* Clear the LCD */ 
+			LCD_Clear(LCD_COLOR_WHITE);
+			
+			LCD_SetFont(&Font16x24);
+			LCD_SetTextColor(LCD_COLOR_BLACK);
+			LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew 4.");
+			LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
+			
+			LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
+			
+			LCD_SetTextColor(LCD_COLOR_BLUE);
+			#define thanks_x_shift 16*2
+			LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
     }
 	}
 }
