@@ -49,6 +49,16 @@
 #define box3_y1 (font_h*(box3_line-1))
 #define box3_y2 (font_h*(box3_line+1))
 
+// back button triangle location for touch target
+//LCD_FillTriangle(uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3)
+//LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+#define back_x1 (font_w*3)
+#define back_x2 (font_w*3)
+#define back_x3 (font_w*0.5)
+#define back_y1 (font_h*0.5)
+#define back_y2 (font_h*2)
+#define back_y3 (font_h*1.25)
+
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/

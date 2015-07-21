@@ -92,10 +92,8 @@ int main(void)
     LCD_DisplayStringLine(LCD_LINE_6,(uint8_t*)"   IOE NOT OK      ");
     LCD_DisplayStringLine(LCD_LINE_7,(uint8_t*)"Reset the board   ");
     LCD_DisplayStringLine(LCD_LINE_8,(uint8_t*)"and try again     ");
+		while(1);
   }
-   
-	/* Clear the LCD */ 
-  LCD_Clear(LCD_COLOR_WHITE);
 	
   while (1)
   {
@@ -104,6 +102,8 @@ int main(void)
 		switch (LCD_state)
 		{
 			case MAIN:
+				LCD_Clear(LCD_COLOR_WHITE);
+			
 				LCD_SetFont(&Font16x24);
 				LCD_SetTextColor(LCD_COLOR_BLACK);
 			
@@ -111,7 +111,7 @@ int main(void)
 				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
 			
 				// back button - for sizing
-				LCD_FillTriangle(font_w*3, font_w*3, font_w*0.5, font_h*0.5, font_h*2, font_h*1.25);
+				//LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
 
 				LCD_DisplayStringLine(LINE(box1_line), (uint8_t*)".....TOGGLE....");
 				LCD_DisplayStringLine(LINE(box2_line), (uint8_t*)"....BREW.NOW...");
@@ -175,6 +175,82 @@ int main(void)
 					// change to next state
 					LCD_state = BREW_DELAY;
 				}
+				break;
+				
+			case TOGGLE:
+				LCD_Clear(LCD_COLOR_WHITE);
+			
+				LCD_SetFont(&Font16x24);
+				LCD_SetTextColor(LCD_COLOR_BLACK);
+			
+				// current time at top
+				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+			
+				// back button
+				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+
+				LCD_DisplayStringLine(LINE(box1_line), (uint8_t*)"....Turn.on....");
+				LCD_DisplayStringLine(LINE(box2_line), (uint8_t*)"....Turn.off...");
+				
+				LCD_SetTextColor(LCD_COLOR_BLUE);
+				// box 1
+				LCD_DrawRect(box1_x1, box1_y1, box1_y2-box1_y1, box1_x2-box1_x1);
+				
+				// box 2
+				LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
+				
+				LCD_SetTextColor(LCD_COLOR_RED);
+				LCD_SetFont(&Font8x12);
+				// temperature at the bottom
+				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				
+				LCD_state = TOGGLE_TOUCH;
+				break;
+				
+			case TOGGLE_TOUCH:
+								// box 1
+				if ((TP_State->TouchDetected) && (TP_State->Y <= box1_y2) && (TP_State->Y >= box1_y1) && (TP_State->X >= box1_x1) && (TP_State->X <= box1_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box1_x1, box1_y1, box1_y2-box1_y1, box1_x2-box1_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					// add logic to actually toggle
+					LCD_state = TOGGLE;
+				}
+				// box 2
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= box2_y2) && (TP_State->Y >= box2_y1) && (TP_State->X >= box2_x1) && (TP_State->X <= box2_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					// add logic to actually toggle
+					LCD_state = TOGGLE;
+				}
+				// back button
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= back_y2) && (TP_State->Y >= back_y1) && (TP_State->X >= back_x3) && (TP_State->X <= back_x2))
+				{
+					// highlight button red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					LCD_state = MAIN;
+				}
+			
+			
 			
 		}
 
