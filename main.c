@@ -135,6 +135,46 @@ int main(void)
 				LCD_state = MAIN_TOUCH;
 			break;
 			
+			case MAIN_TOUCH:
+				// box 1
+				if ((TP_State->TouchDetected) && (TP_State->Y <= box1_y2) && (TP_State->Y >= box1_y1) && (TP_State->X >= box1_x1) && (TP_State->X <= box1_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box1_x1, box1_y1, box1_y2-box1_y1, box1_x2-box1_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					LCD_state = TOGGLE;
+				}
+				// box 2
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= box2_y2) && (TP_State->Y >= box2_y1) && (TP_State->X >= box2_x1) && (TP_State->X <= box2_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					LCD_state = BREW_NOW;
+				}
+				// box 3
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= box3_y2) && (TP_State->Y >= box3_y1) && (TP_State->X >= box3_x1) && (TP_State->X <= box3_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					LCD_state = BREW_DELAY;
+				}
 			
 		}
 
