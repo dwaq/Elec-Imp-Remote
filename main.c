@@ -51,13 +51,22 @@ Time_TypeDef time = HOURS;
 uint8_t time_display[15] = "...hh..:..mm...";
 uint8_t time_hours = 6;
 uint8_t time_minutes = 45;
-	
+
+// temporary storage variable for reads from Gyro
+uint8_t tmpbuffer[1] ={0};
+// stores fahrenheit value after being converted from Gyro
+uint8_t temperature_F = 0;
+// to display accurate temperature at the bottom of the display
+uint8_t temperature_display[30] = "   Current temperature: xxF   ";
+
 // for Delay()
 static __IO uint32_t TimingDelay;
 	
 /* Private function prototypes -----------------------------------------------*/
 void Delay(__IO uint32_t nTime);
 void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time);
+static void Demo_GyroConfig(void);
+static void GyroReadTemperature(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -97,6 +106,9 @@ int main(void)
 		while(1);
   }
 	
+	/* Gyroscope configuration */
+  Demo_GyroConfig();
+	
 	// put the time into the variable as a default
 	modifyTime(INCREMENT, MINUTES);
 	
@@ -132,10 +144,8 @@ int main(void)
 				// box 3
 				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
 				
-				LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_SetFont(&Font8x12);
-				// temperature at the bottom
-				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				// display current temperature at the bottom
+				GyroReadTemperature();
 				
 				LCD_state = MAIN_TOUCH;
 			break;
@@ -204,10 +214,8 @@ int main(void)
 				// box 2
 				LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
 				
-				LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_SetFont(&Font8x12);
-				// temperature at the bottom
-				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				// display current temperature at the bottom
+				GyroReadTemperature();
 				
 				LCD_state = TOGGLE_TOUCH;
 				break;
@@ -275,17 +283,13 @@ int main(void)
 				LCD_SetTextColor(LCD_COLOR_BLUE);
 				// box 1
 				LCD_DrawRect(box1_x1, box1_y1, box1_y2-box1_y1, box1_x2-box1_x1);
-				
 				// box 2
 				LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
-				
 				// box 3
 				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
 				
-				LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_SetFont(&Font8x12);
-				// temperature at the bottom
-				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				// display current temperature at the bottom
+				GyroReadTemperature();
 				
 				LCD_state = BREW_NOW_TOUCH;
 			break;
@@ -381,8 +385,8 @@ int main(void)
 				// selection text
 				LCD_DisplayStringLine(LINE(19), (uint8_t*)".....Select number of cups:...");
 				
-				// temperature at the bottom
-				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				// display current temperature at the bottom
+				GyroReadTemperature();
 				
 				LCD_SetFont(&Font16x24);
 				LCD_SetTextColor(LCD_COLOR_BLUE);
@@ -523,10 +527,8 @@ int main(void)
 				// box 3
 				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
 				
-				LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_SetFont(&Font8x12);
-				// temperature at the bottom
-				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				// display current temperature at the bottom
+				GyroReadTemperature();
 				
 				Delay(10000);
 				
@@ -642,6 +644,61 @@ void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time)
 	
 	time_display[10] = (time_minutes/10)+0x30;
 	time_display[11] = (time_minutes%10)+0x30;
+}
+
+/**
+* @brief  Configure the Mems to gyroscope application.
+* @param  None
+* @retval None
+*/
+static void Demo_GyroConfig(void)
+{
+  L3GD20_InitTypeDef L3GD20_InitStructure;
+  L3GD20_FilterConfigTypeDef L3GD20_FilterStructure;
+
+  /* Configure Mems L3GD20 */
+  L3GD20_InitStructure.Power_Mode = L3GD20_MODE_ACTIVE;
+  L3GD20_InitStructure.Output_DataRate = L3GD20_OUTPUT_DATARATE_1;
+  L3GD20_InitStructure.Axes_Enable = L3GD20_AXES_ENABLE;
+  L3GD20_InitStructure.Band_Width = L3GD20_BANDWIDTH_4;
+  L3GD20_InitStructure.BlockData_Update = L3GD20_BlockDataUpdate_Continous;
+  L3GD20_InitStructure.Endianness = L3GD20_BLE_LSB;
+  L3GD20_InitStructure.Full_Scale = L3GD20_FULLSCALE_500; 
+  L3GD20_Init(&L3GD20_InitStructure);
+  
+  L3GD20_FilterStructure.HighPassFilter_Mode_Selection =L3GD20_HPM_NORMAL_MODE_RES;
+  L3GD20_FilterStructure.HighPassFilter_CutOff_Frequency = L3GD20_HPFCF_0;
+  L3GD20_FilterConfig(&L3GD20_FilterStructure) ;
+  
+  L3GD20_FilterCmd(L3GD20_HIGHPASSFILTER_ENABLE);
+}
+
+/**
+* @brief  Read and calculate the temperature from the Gyroscope.
+* @param  None
+* @retval None
+*/
+static void GyroReadTemperature(void)
+{
+	// temporary value for calculations
+	int8_t temp = 0;
+	
+	// read 1 byte from temperature register
+	L3GD20_Read(tmpbuffer,L3GD20_OUT_TEMP_ADDR,1);
+
+	// http://forums.parallax.com/discussion/comment/1165144/#Comment_1165144
+	temp = 25 - tmpbuffer[0];
+	#define correction_factor 0		// example used -4: need to calibrate mine
+	temp = (temp + 25) + correction_factor; //Deg C
+	temperature_F = (temp * (9/5)) + 32; //Deg F
+	
+	// write temperature across bottom of screen
+	LCD_SetTextColor(LCD_COLOR_RED);
+	LCD_SetFont(&Font8x12);
+	temperature_display[24] = (temperature_F/10)+0x30;
+	temperature_display[25] = (temperature_F%10)+0x30;
+	LCD_DisplayStringLine(LINE(25), (uint8_t*)temperature_display);
+	
 }
 
 /**
