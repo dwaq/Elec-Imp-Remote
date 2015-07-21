@@ -26,7 +26,8 @@ typedef enum
 	BREW_NOW_TOUCH = 5,
 	BREW_DELAY = 6,
 	BREW_DELAY_TOUCH = 7,
-	BREW_CONFIRM = 8
+	BREW_DELAY_CONFIRM = 8,
+	BREW_DELAY_CONFIRM_TOUCH = 9
 } DISPLAY_STATES_TypeDef;
 
 DISPLAY_STATES_TypeDef LCD_state = MAIN;
@@ -470,36 +471,92 @@ int main(void)
 				//  2 cups
 				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_2_c) && (TP_State->Y >= y1_2_c) && (TP_State->X >= x1_2_c) && (TP_State->X <= x2_2_c))
 				{
-					LCD_state = BREW_CONFIRM;
+					LCD_state = BREW_DELAY_CONFIRM;
 				}
 				// 3 cups
 				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_3_c) && (TP_State->Y >= y1_3_c) && (TP_State->X >= x1_3_c) && (TP_State->X <= x2_3_c))
 				{
-					LCD_state = BREW_CONFIRM;
+					LCD_state = BREW_DELAY_CONFIRM;
 				}
 				// 4 cups
 				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_4_c) && (TP_State->Y >= y1_4_c) && (TP_State->X >= x1_4_c) && (TP_State->X <= x2_4_c))
 				{
-					LCD_state = BREW_CONFIRM;
+					LCD_state = BREW_DELAY_CONFIRM;
+				}
+				// back button
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= back_y2) && (TP_State->Y >= back_y1) && (TP_State->X >= back_x3) && (TP_State->X <= back_x2))
+				{
+					// highlight button red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					LCD_state = MAIN;
 				}
 			break;
 						
-			case BREW_CONFIRM:
+			case BREW_DELAY_CONFIRM:
 				LCD_Clear(LCD_COLOR_WHITE);
-
+			
 				LCD_SetFont(&Font16x24);
 				LCD_SetTextColor(LCD_COLOR_BLACK);
+			
+				// current time at top
+				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+			
+				// back button
+				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+
 				LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew X.");
 				LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
-
-				LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
-
+			
+				LCD_DisplayStringLine(LINE(box3_line), (uint8_t*)"....CONFIRM....");
+				
 				LCD_SetTextColor(LCD_COLOR_BLUE);
-				#define thanks_x_shift 16*2
-				LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
-	
+				
+				// box 3
+				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
+				
+				LCD_SetTextColor(LCD_COLOR_RED);
+				LCD_SetFont(&Font8x12);
+				// temperature at the bottom
+				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				
 				Delay(10000);
-			LCD_state = MAIN;
+				
+				LCD_state = BREW_DELAY_CONFIRM_TOUCH;
+			break;
+			
+			case BREW_DELAY_CONFIRM_TOUCH:
+				// box 3
+				if ((TP_State->TouchDetected) && (TP_State->Y <= box3_y2) && (TP_State->Y >= box3_y1) && (TP_State->X >= box3_x1) && (TP_State->X <= box3_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// go back to main
+					LCD_state = MAIN;
+				}
+				// back button
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= back_y2) && (TP_State->Y >= back_y1) && (TP_State->X >= back_x3) && (TP_State->X <= back_x2))
+				{
+					// highlight button red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// go back a screen
+					LCD_state = BREW_DELAY;
+				}
 			break;
 		}
 
