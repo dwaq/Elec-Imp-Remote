@@ -50,7 +50,7 @@ Time_TypeDef time = HOURS;
 
 uint8_t time_display[15] = "...hh..:..mm...";
 uint8_t time_hours = 6;
-uint8_t time_minutes = 50;
+uint8_t time_minutes = 45;
 	
 // for Delay()
 static __IO uint32_t TimingDelay;
@@ -96,6 +96,9 @@ int main(void)
     LCD_DisplayStringLine(LCD_LINE_8,(uint8_t*)"and try again     ");
 		while(1);
   }
+	
+	// put the time into the variable as a default
+	modifyTime(INCREMENT, MINUTES);
 	
   while (1)
   {
