@@ -2,7 +2,7 @@
   ******************************************************************************
   * @file    main.c
   * @author  Dillon Nichols
-  * @version V1.0.1
+  * @version V0.0
   * @date    07-20-2015
   * @brief   Project to control Elec-Imp-Relay from 32F429IDISCOVERY board
   ******************************************************************************
@@ -15,6 +15,20 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+
+typedef enum
+{
+	MAIN = 0,
+	MAIN_TOUCH = 1,
+	TOGGLE = 2,
+	TOGGLE_TOUCH = 3,
+	BREW_NOW = 4,
+	BREW_NOW_TOUCH = 5,
+	BREW_DELAY = 6,
+	BREW_DELAY_TOUCH = 7
+} DISPLAY_STATES_TypeDef;
+
+DISPLAY_STATES_TypeDef LCD_state = MAIN;
 
 typedef enum
 {
@@ -40,7 +54,6 @@ uint8_t time_minutes = 50;
 static __IO uint32_t TimingDelay;
 	
 /* Private function prototypes -----------------------------------------------*/
-static void TP_Config(void);
 void Delay(__IO uint32_t nTime);
 void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time);
 
@@ -70,219 +83,61 @@ int main(void)
   
   /* Set LCD foreground layer */
   LCD_SetLayer(LCD_FOREGROUND_LAYER);
-  
-  /* Touch Panel configuration */
-  TP_Config();
+ 
+  /* Configure the IO Expander and display error if not OK */
+  if (IOE_Config() != IOE_OK)
+  {
+    LCD_Clear(LCD_COLOR_RED);
+    LCD_SetTextColor(LCD_COLOR_BLACK); 
+    LCD_DisplayStringLine(LCD_LINE_6,(uint8_t*)"   IOE NOT OK      ");
+    LCD_DisplayStringLine(LCD_LINE_7,(uint8_t*)"Reset the board   ");
+    LCD_DisplayStringLine(LCD_LINE_8,(uint8_t*)"and try again     ");
+  }
    
 	/* Clear the LCD */ 
   LCD_Clear(LCD_COLOR_WHITE);
 	
-	LCD_SetFont(&Font16x24);
-	LCD_SetTextColor(LCD_COLOR_BLACK);
-	LCD_DisplayStringLine(LINE(11), (uint8_t*)"..2....3....4..");
-	
-	// current time at top
-	LCD_DisplayStringLine(LINE(2), (uint8_t*)"........HH:MM..");
-
-	// display set time at middle
-	LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
-	
-	//void LCD_FillTriangle(uint16_t x1, uint16_t x2, uint16_t x3, uint16_t y1, uint16_t y2, uint16_t y3)
-	LCD_FillTriangle(16*3, 16*5, 16*4, 26*5, 26*5, 26*4);	// left up
-	LCD_FillTriangle(16*10, 16*12, 16*11, 26*5, 26*5, 26*4);	// right up
-	
-	LCD_FillTriangle(16*3, 16*5, 16*4, 26*7, 26*7, 26*8);	// left down
-	LCD_FillTriangle(16*10, 16*12, 16*11, 26*7, 26*7, 26*8);	// right down
-	
-	LCD_SetTextColor(LCD_COLOR_RED);
-	// back button
-	LCD_FillTriangle(16*3, 16*3, 16*0.5,  26*1.5, 26*3, 26*2.25);
-	LCD_SetFont(&Font8x12);
-	// some small text
-	LCD_DisplayStringLine(LINE(1), (uint8_t*)"...Current temperature: 72F...");
-	LCD_DisplayStringLine(LINE(19), (uint8_t*)"....Select number of cups:...");
-	
-	// X, Y, Height, Width
-	LCD_SetFont(&Font16x24);
-	LCD_SetTextColor(LCD_COLOR_BLUE);
-	
-	// left up
-	#define x1_l_u 16*2
-	#define x2_l_u 16*6
-	#define y1_l_u 26*3.5
-	#define y2_l_u 26*5.5
-	LCD_DrawRect(x1_l_u, y1_l_u, y2_l_u-y1_l_u, x2_l_u-x1_l_u);
-	
-	// right up
-	#define xshift_r_u 16*7
-	#define x1_r_u (x1_l_u+xshift_r_u)
-	#define x2_r_u (x2_l_u+xshift_r_u)
-	#define y1_r_u y1_l_u
-	#define y2_r_u y2_l_u
-	LCD_DrawRect(x1_r_u, y1_r_u, y2_r_u-y1_r_u, x2_r_u-x1_r_u);
-	
-	// left down
-	#define x1_l_d 16*2
-	#define x2_l_d 16*6
-	#define y1_l_d 26*6.5
-	#define y2_l_d 26*8.5
-	LCD_DrawRect(x1_l_d, y1_l_d, y2_l_d-y1_l_d, x2_l_d-x1_l_d);
-	
-	// right down
-	#define xshift_r_d 16*7
-	#define x1_r_d (x1_l_d+xshift_r_d)
-	#define x2_r_d (x2_l_d+xshift_r_d)
-	#define y1_r_d y1_l_d
-	#define y2_r_d y2_l_d
-	LCD_DrawRect(x1_r_d, y1_r_d, y2_r_d-y1_r_d, x2_r_d-x1_r_d);
-	
-	// 2 cups
-	#define x1_2_c 16*0.5
-	#define x2_2_c 16*4.5
-	#define y1_2_c 26*9.5
-	#define y2_2_c 26*11.5
-	LCD_DrawRect(x1_2_c, y1_2_c, y2_2_c-y1_2_c, x2_2_c-x1_2_c);
-	
-	// 3 cups
-	#define x1_3_c 16*5.5
-	#define x2_3_c 16*9.5
-	#define y1_3_c 26*9.5
-	#define y2_3_c 26*11.5
-	LCD_DrawRect(x1_3_c, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c);
-	
-	// 4 cups
-	#define x1_4_c 16*10.5
-	#define x2_4_c 16*14.5
-	#define y1_4_c 26*9.5
-	#define y2_4_c 26*11.5
-	LCD_DrawRect(x1_4_c, y1_4_c, y2_4_c-y1_4_c, x2_4_c-x1_4_c);
-	
-	// example for drawing lines
-	// X, Y, length, direction
-	//LCD_DrawLine(40, 70, 220, LCD_DIR_VERTICAL);
-  //LCD_DrawLine(0, 319, 240, LCD_DIR_HORIZONTAL);
-		
   while (1)
   {
- 
     TP_State = IOE_TP_GetState();
 		
-		// left up
-		if ((TP_State->TouchDetected) && (TP_State->Y <= y2_l_u) && (TP_State->Y >= y1_l_u) && (TP_State->X >= x1_l_u) && (TP_State->X <= x2_l_u))
-    {
-      	LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_DrawRect(x1_l_u, y1_l_u, y2_l_u-y1_l_u, x2_l_u-x1_l_u);
-			
-				modifyTime(INCREMENT, HOURS);
-			
+		switch (LCD_state)
+		{
+			case MAIN:
+				LCD_SetFont(&Font16x24);
 				LCD_SetTextColor(LCD_COLOR_BLACK);
-				LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
 			
-				Delay(3000);
+				// current time at top
+				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
 			
-			  LCD_SetTextColor(LCD_COLOR_BLUE);
-				LCD_DrawRect(x1_l_u, y1_l_u, y2_l_u-y1_l_u, x2_l_u-x1_l_u);
-    }
-		// left down
-		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_l_d) && (TP_State->Y >= y1_l_d) && (TP_State->X >= x1_l_d) && (TP_State->X <= x2_l_d))
-    {
-      	LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_DrawRect(x1_l_d, y1_l_d, y2_l_d-y1_l_d, x2_l_d-x1_l_d);
-			
-				modifyTime(DECREMENT, HOURS);
-			
-				LCD_SetTextColor(LCD_COLOR_BLACK);
-				LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
-			
-				Delay(3000);
-			
+				// back button - for sizing
+				LCD_FillTriangle(font_w*3, font_w*3, font_w*0.5, font_h*0.5, font_h*2, font_h*1.25);
+
+				LCD_DisplayStringLine(LINE(box1_line), (uint8_t*)".....TOGGLE....");
+				LCD_DisplayStringLine(LINE(box2_line), (uint8_t*)"....BREW.NOW...");
+				LCD_DisplayStringLine(LINE(box3_line), (uint8_t*)"...DELAY.BREW..");
+				
 				LCD_SetTextColor(LCD_COLOR_BLUE);
-				LCD_DrawRect(x1_l_d, y1_l_d, y2_l_d-y1_l_d, x2_l_d-x1_l_d);
-    }
-		// right up
-		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_r_u) && (TP_State->Y >= y1_r_u) && (TP_State->X >= x1_r_u) && (TP_State->X <= x2_r_u))
-    {
-      	LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_DrawRect(x1_r_u, y1_r_u, y2_r_u-y1_r_u, x2_r_u-x1_r_u);
+				// box 1
+				LCD_DrawRect(box1_x1, box1_y1, box1_y2-box1_y1, box1_x2-box1_x1);
+				
+				// box 2
+				LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
+				
+				// box 3
+				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
+				
+				LCD_SetTextColor(LCD_COLOR_RED);
+				LCD_SetFont(&Font8x12);
+				// temperature at the bottom
+				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				
+				LCD_state = MAIN_TOUCH;
+			break;
 			
-				modifyTime(INCREMENT, MINUTES);
 			
-				LCD_SetTextColor(LCD_COLOR_BLACK);
-				LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
-			
-				Delay(3000);
-			
-				LCD_SetTextColor(LCD_COLOR_BLUE);
-				LCD_DrawRect(x1_r_u, y1_r_u, y2_r_u-y1_r_u, x2_r_u-x1_r_u);
-    }
-		// right down
-		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_r_d) && (TP_State->Y >= y1_r_d) && (TP_State->X >= x1_r_d) && (TP_State->X <= x2_r_d))
-    {
-      	LCD_SetTextColor(LCD_COLOR_RED);
-				LCD_DrawRect(x1_r_d, y1_r_d, y2_r_d-y1_r_d, x2_r_d-x1_r_d);
-			
-				modifyTime(DECREMENT, MINUTES);
-			
-				LCD_SetTextColor(LCD_COLOR_BLACK);
-				LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
-			
-				Delay(3000);
-			
-				LCD_SetTextColor(LCD_COLOR_BLUE);
-				LCD_DrawRect(x1_r_d, y1_r_d, y2_r_d-y1_r_d, x2_r_d-x1_r_d);
-    }
-		
-		//  2 cups
-		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_2_c) && (TP_State->Y >= y1_2_c) && (TP_State->X >= x1_2_c) && (TP_State->X <= x2_2_c))
-    {
-			/* Clear the LCD */ 
-			LCD_Clear(LCD_COLOR_WHITE);
-			
-			LCD_SetFont(&Font16x24);
-			LCD_SetTextColor(LCD_COLOR_BLACK);
-			LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew 2.");
-			LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
-						
-			LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
-			
-			LCD_SetTextColor(LCD_COLOR_BLUE);
-			#define thanks_x_shift 16*2
-			LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
-    }
-		// 3 cups
-		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_3_c) && (TP_State->Y >= y1_3_c) && (TP_State->X >= x1_3_c) && (TP_State->X <= x2_3_c))
-    {
-			/* Clear the LCD */ 
-			LCD_Clear(LCD_COLOR_WHITE);
-			
-			LCD_SetFont(&Font16x24);
-			LCD_SetTextColor(LCD_COLOR_BLACK);
-			LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew 3.");
-			LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
-						
-			LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
-			
-			LCD_SetTextColor(LCD_COLOR_BLUE);
-			#define thanks_x_shift 16*2
-			LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
-    }
-		// 4 cups
-		else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_4_c) && (TP_State->Y >= y1_4_c) && (TP_State->X >= x1_4_c) && (TP_State->X <= x2_4_c))
-    {
-			/* Clear the LCD */ 
-			LCD_Clear(LCD_COLOR_WHITE);
-			
-			LCD_SetFont(&Font16x24);
-			LCD_SetTextColor(LCD_COLOR_BLACK);
-			LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew 4.");
-			LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
-			
-			LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
-			
-			LCD_SetTextColor(LCD_COLOR_BLUE);
-			#define thanks_x_shift 16*2
-			LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
-    }
+		}
+
 	}
 }
 
@@ -362,31 +217,6 @@ void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time)
 	
 	time_display[10] = (time_minutes/10)+0x30;
 	time_display[11] = (time_minutes%10)+0x30;
-}
-
-/**
-* @brief  Configure the IO Expander and the Touch Panel.
-* @param  None
-* @retval None
-*/
-static void TP_Config(void)
-{
-  /* Clear the LCD */ 
-  LCD_Clear(LCD_COLOR_WHITE);
-  
-  /* Configure the IO Expander */
-  if (IOE_Config() == IOE_OK)
-  {   
-		// set display defaults
-  }  
-  else
-  {
-    LCD_Clear(LCD_COLOR_RED);
-    LCD_SetTextColor(LCD_COLOR_BLACK); 
-    LCD_DisplayStringLine(LCD_LINE_6,(uint8_t*)"   IOE NOT OK      ");
-    LCD_DisplayStringLine(LCD_LINE_7,(uint8_t*)"Reset the board   ");
-    LCD_DisplayStringLine(LCD_LINE_8,(uint8_t*)"and try again     ");
-  }
 }
 
 /**
