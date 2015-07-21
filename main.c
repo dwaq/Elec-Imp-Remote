@@ -14,6 +14,10 @@
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
+#define ABS(x)                     (x < 0) ? (-x) : x
+#define L3G_Sensitivity_250dps     (float)114.285f        /*!< gyroscope sensitivity with 250 dps full scale [LSB/dps]  */
+#define L3G_Sensitivity_500dps     (float)57.1429f        /*!< gyroscope sensitivity with 500 dps full scale [LSB/dps]  */
+#define L3G_Sensitivity_2000dps    (float)14.285f         /*!< gyroscope sensitivity with 2000 dps full scale [LSB/dps] */
 /* Private variables ---------------------------------------------------------*/
 
 typedef enum
@@ -59,6 +63,13 @@ uint8_t temperature_F = 0;
 // to display accurate temperature at the bottom of the display
 uint8_t temperature_display[30] = "   Current temperature: xxF   ";
 
+float Buffer[6];
+float Gyro[3];
+float X_BiasError, Y_BiasError, Z_BiasError = 0.0;
+
+// counting how long the board isn't moving
+uint32_t still_counter = 0;
+
 // for Delay()
 static __IO uint32_t TimingDelay;
 	
@@ -67,6 +78,8 @@ void Delay(__IO uint32_t nTime);
 void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time);
 static void Demo_GyroConfig(void);
 static void GyroReadTemperature(void);
+static void Demo_GyroReadAngRate (float* pfData);
+static void Gyro_SimpleCalibration(float* GyroData);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -109,12 +122,36 @@ int main(void)
 	/* Gyroscope configuration */
   Demo_GyroConfig();
 	
+	 /* Gyroscope calibration */
+  Gyro_SimpleCalibration(Gyro);
+	
+	// use the LED as a designator for the backlight
+	STM_EVAL_LEDInit(LED3);
+	
 	// put the time into the variable as a default
 	modifyTime(INCREMENT, MINUTES);
 	
   while (1)
   {
     TP_State = IOE_TP_GetState();
+		
+		Demo_GyroReadAngRate(Buffer);
+		
+		// not moving
+		if ((ABS(Buffer[0]) < 2)&&(ABS(Buffer[1]) < 2)&&(ABS(Buffer[2]) < 1))
+		{
+			still_counter++;
+			// after being still for X times, turn the light off
+			if (still_counter == 10000)
+			{
+				STM_EVAL_LEDOff(LED3);
+			}
+		}
+		else
+		{
+			still_counter = 0;
+			STM_EVAL_LEDOn(LED3);
+		}
 		
 		switch (LCD_state)
 		{
@@ -671,6 +708,92 @@ static void Demo_GyroConfig(void)
   L3GD20_FilterConfig(&L3GD20_FilterStructure) ;
   
   L3GD20_FilterCmd(L3GD20_HIGHPASSFILTER_ENABLE);
+}
+
+/**
+* @brief  Calculate the angular Data rate Gyroscope.
+* @param  pfData : Data out pointer
+* @retval None
+*/
+static void Demo_GyroReadAngRate (float* pfData)
+{
+  uint8_t tmpbuffer[6] ={0};
+  int16_t RawData[3] = {0};
+  uint8_t tmpreg = 0;
+  float sensitivity = 0;
+  int i =0;
+  
+  L3GD20_Read(&tmpreg,L3GD20_CTRL_REG4_ADDR,1);
+  
+  L3GD20_Read(tmpbuffer,L3GD20_OUT_X_L_ADDR,6);
+  
+  /* check in the control register 4 the data alignment (Big Endian or Little Endian)*/
+  if(!(tmpreg & 0x40))
+  {
+    for(i=0; i<3; i++)
+    {
+      RawData[i]=(int16_t)(((uint16_t)tmpbuffer[2*i+1] << 8) + tmpbuffer[2*i]);
+    }
+  }
+  else
+  {
+    for(i=0; i<3; i++)
+    {
+      RawData[i]=(int16_t)(((uint16_t)tmpbuffer[2*i] << 8) + tmpbuffer[2*i+1]);
+    }
+  }
+  
+  /* Switch the sensitivity value set in the CRTL4 */
+  switch(tmpreg & 0x30)
+  {
+  case 0x00:
+    sensitivity=L3G_Sensitivity_250dps;
+    break;
+    
+  case 0x10:
+    sensitivity=L3G_Sensitivity_500dps;
+    break;
+    
+  case 0x20:
+    sensitivity=L3G_Sensitivity_2000dps;
+    break;
+  }
+  /* divide by sensitivity */
+  for(i=0; i<3; i++)
+  {
+  pfData[i]=(float)RawData[i]/sensitivity;
+  }
+	
+	Buffer[0] = (int8_t)Buffer[0] - (int8_t)Gyro[0];
+  Buffer[1] = (int8_t)Buffer[1] - (int8_t)Gyro[1];
+}
+
+/**
+* @brief  Calculate offset of the angular Data rate Gyroscope.
+* @param  GyroData : Data out pointer
+* @retval None
+*/
+static void Gyro_SimpleCalibration(float* GyroData)
+{
+  uint32_t BiasErrorSplNbr = 500;
+  int i = 0;
+  
+  for (i = 0; i < BiasErrorSplNbr; i++)
+  {
+    Demo_GyroReadAngRate(GyroData);
+    X_BiasError += GyroData[0];
+    Y_BiasError += GyroData[1];
+    Z_BiasError += GyroData[2];
+  }
+  /* Set bias errors */
+  X_BiasError /= BiasErrorSplNbr;
+  Y_BiasError /= BiasErrorSplNbr;
+  Z_BiasError /= BiasErrorSplNbr;
+  
+  /* Get offset value on X, Y and Z */
+  GyroData[0] = X_BiasError;
+  GyroData[1] = Y_BiasError;
+  GyroData[2] = Z_BiasError;
 }
 
 /**
