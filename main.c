@@ -25,7 +25,8 @@ typedef enum
 	BREW_NOW = 4,
 	BREW_NOW_TOUCH = 5,
 	BREW_DELAY = 6,
-	BREW_DELAY_TOUCH = 7
+	BREW_DELAY_TOUCH = 7,
+	BREW_CONFIRM = 8
 } DISPLAY_STATES_TypeDef;
 
 DISPLAY_STATES_TypeDef LCD_state = MAIN;
@@ -208,7 +209,7 @@ int main(void)
 				break;
 				
 			case TOGGLE_TOUCH:
-								// box 1
+				// box 1
 				if ((TP_State->TouchDetected) && (TP_State->Y <= box1_y2) && (TP_State->Y >= box1_y1) && (TP_State->X >= box1_x1) && (TP_State->X <= box1_x2))
 				{
 					// highlight box red
@@ -249,9 +250,257 @@ int main(void)
 					// change to next state
 					LCD_state = MAIN;
 				}
+			break;
+
+			case BREW_NOW:
+				LCD_Clear(LCD_COLOR_WHITE);
 			
+				LCD_SetFont(&Font16x24);
+				LCD_SetTextColor(LCD_COLOR_BLACK);
 			
+				// current time at top
+				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
 			
+				// back button
+				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+
+				LCD_DisplayStringLine(LINE(box1_line), (uint8_t*)".....2.cups....");
+				LCD_DisplayStringLine(LINE(box2_line), (uint8_t*)".....3.cups....");
+				LCD_DisplayStringLine(LINE(box3_line), (uint8_t*)".....4.cups....");
+				
+				LCD_SetTextColor(LCD_COLOR_BLUE);
+				// box 1
+				LCD_DrawRect(box1_x1, box1_y1, box1_y2-box1_y1, box1_x2-box1_x1);
+				
+				// box 2
+				LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
+				
+				// box 3
+				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
+				
+				LCD_SetTextColor(LCD_COLOR_RED);
+				LCD_SetFont(&Font8x12);
+				// temperature at the bottom
+				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				
+				LCD_state = BREW_NOW_TOUCH;
+			break;
+			
+			case BREW_NOW_TOUCH:
+				// box 1
+				if ((TP_State->TouchDetected) && (TP_State->Y <= box1_y2) && (TP_State->Y >= box1_y1) && (TP_State->X >= box1_x1) && (TP_State->X <= box1_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box1_x1, box1_y1, box1_y2-box1_y1, box1_x2-box1_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					// add logic to send data
+					LCD_state = BREW_NOW;
+				}
+				// box 2
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= box2_y2) && (TP_State->Y >= box2_y1) && (TP_State->X >= box2_x1) && (TP_State->X <= box2_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					// add logic to send data
+					LCD_state = BREW_NOW;
+				}
+				// box 3
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= box3_y2) && (TP_State->Y >= box3_y1) && (TP_State->X >= box3_x1) && (TP_State->X <= box3_x2))
+				{
+					// highlight box red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					// add logic to send data
+					LCD_state = BREW_NOW;
+				}
+				// back button
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= back_y2) && (TP_State->Y >= back_y1) && (TP_State->X >= back_x3) && (TP_State->X <= back_x2))
+				{
+					// highlight button red
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+					
+					// delay so user can see
+					Delay(3000);
+					
+					// change to next state
+					LCD_state = MAIN;
+				}
+			break;
+			
+			case BREW_DELAY:
+				LCD_Clear(LCD_COLOR_WHITE);
+			
+				LCD_SetFont(&Font16x24);
+				LCD_SetTextColor(LCD_COLOR_BLACK);
+			
+				// current time at top
+				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+			
+				// back button
+				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
+			
+				// select cups
+				LCD_DisplayStringLine(LINE(11), (uint8_t*)"..2....3....4..");
+				
+				// display set time at middle
+				LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
+				
+				// left up arrow
+				LCD_FillTriangle(16*3, 16*5, 16*4, 26*5, 26*5, 26*4);
+				// right up arrow
+				LCD_FillTriangle(16*10, 16*12, 16*11, 26*5, 26*5, 26*4);
+				// left down arrow
+				LCD_FillTriangle(16*3, 16*5, 16*4, 26*7, 26*7, 26*8);
+				// right down arrow
+				LCD_FillTriangle(16*10, 16*12, 16*11, 26*7, 26*7, 26*8);
+				
+				LCD_SetTextColor(LCD_COLOR_RED);
+				LCD_SetFont(&Font8x12);
+				
+				// selection text
+				LCD_DisplayStringLine(LINE(19), (uint8_t*)".....Select number of cups:...");
+				
+				// temperature at the bottom
+				LCD_DisplayStringLine(LINE(25), (uint8_t*)"...Current temperature: 72F...");
+				
+				LCD_SetFont(&Font16x24);
+				LCD_SetTextColor(LCD_COLOR_BLUE);
+				
+				// left up button
+				LCD_DrawRect(x1_l_u, y1_l_u, y2_l_u-y1_l_u, x2_l_u-x1_l_u);
+				// right up button
+				LCD_DrawRect(x1_r_u, y1_r_u, y2_r_u-y1_r_u, x2_r_u-x1_r_u);
+				// left down button
+				LCD_DrawRect(x1_l_d, y1_l_d, y2_l_d-y1_l_d, x2_l_d-x1_l_d);
+				// right down button
+				LCD_DrawRect(x1_r_d, y1_r_d, y2_r_d-y1_r_d, x2_r_d-x1_r_d);
+				
+				// 2 cups button
+				LCD_DrawRect(x1_2_c, y1_2_c, y2_2_c-y1_2_c, x2_2_c-x1_2_c);
+				// 3 cups button
+				LCD_DrawRect(x1_3_c, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c);
+				// 4 cups button
+				LCD_DrawRect(x1_4_c, y1_4_c, y2_4_c-y1_4_c, x2_4_c-x1_4_c);
+				
+				LCD_state = BREW_DELAY_TOUCH;
+			break;
+				
+			case BREW_DELAY_TOUCH:
+				// left up
+				if ((TP_State->TouchDetected) && (TP_State->Y <= y2_l_u) && (TP_State->Y >= y1_l_u) && (TP_State->X >= x1_l_u) && (TP_State->X <= x2_l_u))
+				{
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(x1_l_u, y1_l_u, y2_l_u-y1_l_u, x2_l_u-x1_l_u);
+
+					modifyTime(INCREMENT, HOURS);
+
+					LCD_SetTextColor(LCD_COLOR_BLACK);
+					LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
+
+					Delay(3000);
+
+					LCD_SetTextColor(LCD_COLOR_BLUE);
+					LCD_DrawRect(x1_l_u, y1_l_u, y2_l_u-y1_l_u, x2_l_u-x1_l_u);
+				}
+				// left down
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_l_d) && (TP_State->Y >= y1_l_d) && (TP_State->X >= x1_l_d) && (TP_State->X <= x2_l_d))
+				{
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(x1_l_d, y1_l_d, y2_l_d-y1_l_d, x2_l_d-x1_l_d);
+
+					modifyTime(DECREMENT, HOURS);
+
+					LCD_SetTextColor(LCD_COLOR_BLACK);
+					LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
+
+					Delay(3000);
+
+					LCD_SetTextColor(LCD_COLOR_BLUE);
+					LCD_DrawRect(x1_l_d, y1_l_d, y2_l_d-y1_l_d, x2_l_d-x1_l_d);
+				}
+				// right up
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_r_u) && (TP_State->Y >= y1_r_u) && (TP_State->X >= x1_r_u) && (TP_State->X <= x2_r_u))
+				{
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(x1_r_u, y1_r_u, y2_r_u-y1_r_u, x2_r_u-x1_r_u);
+
+					modifyTime(INCREMENT, MINUTES);
+
+					LCD_SetTextColor(LCD_COLOR_BLACK);
+					LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
+
+					Delay(3000);
+
+					LCD_SetTextColor(LCD_COLOR_BLUE);
+					LCD_DrawRect(x1_r_u, y1_r_u, y2_r_u-y1_r_u, x2_r_u-x1_r_u);
+				}
+				// right down
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_r_d) && (TP_State->Y >= y1_r_d) && (TP_State->X >= x1_r_d) && (TP_State->X <= x2_r_d))
+				{
+					LCD_SetTextColor(LCD_COLOR_RED);
+					LCD_DrawRect(x1_r_d, y1_r_d, y2_r_d-y1_r_d, x2_r_d-x1_r_d);
+
+					modifyTime(DECREMENT, MINUTES);
+
+					LCD_SetTextColor(LCD_COLOR_BLACK);
+					LCD_DisplayStringLine(LINE(6), (uint8_t*)time_display);
+
+					Delay(3000);
+
+					LCD_SetTextColor(LCD_COLOR_BLUE);
+					LCD_DrawRect(x1_r_d, y1_r_d, y2_r_d-y1_r_d, x2_r_d-x1_r_d);
+				}
+				//  2 cups
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_2_c) && (TP_State->Y >= y1_2_c) && (TP_State->X >= x1_2_c) && (TP_State->X <= x2_2_c))
+				{
+					LCD_state = BREW_CONFIRM;
+				}
+				// 3 cups
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_3_c) && (TP_State->Y >= y1_3_c) && (TP_State->X >= x1_3_c) && (TP_State->X <= x2_3_c))
+				{
+					LCD_state = BREW_CONFIRM;
+				}
+				// 4 cups
+				else if ((TP_State->TouchDetected) && (TP_State->Y <= y2_4_c) && (TP_State->Y >= y1_4_c) && (TP_State->X >= x1_4_c) && (TP_State->X <= x2_4_c))
+				{
+					LCD_state = BREW_CONFIRM;
+				}
+			break;
+						
+			case BREW_CONFIRM:
+				LCD_Clear(LCD_COLOR_WHITE);
+
+				LCD_SetFont(&Font16x24);
+				LCD_SetTextColor(LCD_COLOR_BLACK);
+				LCD_DisplayStringLine(LINE(5), (uint8_t*)".I will brew X.");
+				LCD_DisplayStringLine(LINE(6), (uint8_t*)".cups at HH:MM.");
+
+				LCD_DisplayStringLine(LINE(11), (uint8_t*)"....Thanks!....");
+
+				LCD_SetTextColor(LCD_COLOR_BLUE);
+				#define thanks_x_shift 16*2
+				LCD_DrawRect(x1_3_c-thanks_x_shift, y1_3_c, y2_3_c-y1_3_c, x2_3_c-x1_3_c+thanks_x_shift*2);
+	
+				Delay(10000);
+			LCD_state = MAIN;
+			break;
 		}
 
 	}
@@ -280,7 +529,7 @@ void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time)
 					// if decrementing minutes and minutes is 0, go back to 59 minutes
 					if (time_minutes == 0)
 					{
-						time_minutes = 59;
+						time_minutes = 55;
 						
 						// and decrement the hour too, ensuring it won't go negative either
 						if (time_hours != 1)
@@ -294,7 +543,7 @@ void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time)
 					}
 					else
 					{
-						time_minutes--;
+						time_minutes-=5;
 					}
 				break;
 			}
@@ -308,7 +557,7 @@ void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time)
 				break;
 				
 				case MINUTES:
-					time_minutes++;
+					time_minutes+=5;
 				break;
 			}
 			break;
