@@ -76,6 +76,7 @@ static __IO uint32_t TimingDelay;
 /* Private function prototypes -----------------------------------------------*/
 void Delay(__IO uint32_t nTime);
 void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time);
+void USART_print(USART_TypeDef* USARTx, volatile char *s);
 static void Demo_GyroConfig(void);
 static void GyroReadTemperature(void);
 static void Demo_GyroReadAngRate (float* pfData);
@@ -90,12 +91,57 @@ static void Gyro_SimpleCalibration(float* GyroData);
   */
 int main(void)
 {
+	GPIO_InitTypeDef  GPIO_InitStructure;
+	USART_InitTypeDef USART_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStruct;
+	
   //uint16_t linenum = 0;
   static TP_STATE* TP_State; 
     
 	// set systick to fire every 0.1ms
 	SysTick_Config(18000);
 	
+	/* set up UART1 */
+	
+	//enable the GPIO clocks for PA9 and PA10
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+	
+	// Connect the UART pins to the peripherals' Alternate Function
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);
+	
+	// set up the UART pins
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9|GPIO_Pin_10;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+	
+	// Enable UART peripheral clock
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+	
+	// program UART settings
+	USART_InitStructure.USART_BaudRate = 115200;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_Init(USART1, &USART_InitStructure);
+	USART_Cmd(USART1, ENABLE);
+	
+	// Enable UART RX interrupt
+	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+	NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+	NVIC_Init(&NVIC_InitStruct);
+	
+	// print something to show it's working
+	USART_print(USART1, "Hello World!\r\n");
+
   /* LCD initialization */
   LCD_Init();
   
@@ -605,6 +651,12 @@ int main(void)
 	}
 }
 
+/**
+* @brief  Change the delay time by a certain amount
+* @param  Unary_Operator_TypeDef : choose to increase or decrease the time
+* @param  Time_TypeDef : choose to change hour or minute
+* @retval None
+*/
 void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time)
 {
 	switch (change)
@@ -681,6 +733,25 @@ void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time)
 	
 	time_display[10] = (time_minutes/10)+0x30;
 	time_display[11] = (time_minutes%10)+0x30;
+}
+
+/**
+* @brief  Transmit a string of characters via the USART
+* @param  USARTx : can be any of the USARTs e.g. USART1, USART2 etc
+* @param  char *s : pointer to the string you want to send
+* @retval None
+*/
+void USART_print(USART_TypeDef* USARTx, volatile char *s)
+{
+	while(*s)
+	{
+		// wait until transmission is complete
+		while( !(USARTx->SR & USART_FLAG_TC) );
+		// send next data
+		USART_SendData(USARTx, *s);
+		// go to next char
+		*s++;
+	}
 }
 
 /**
