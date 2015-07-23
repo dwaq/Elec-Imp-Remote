@@ -10,7 +10,7 @@ This code is a work in progress.
 
 ####Modifications to 32F429IDISCOVERY board
 1. Remove resistors R47, R48, R49, R50
-2. Add a wire from the south end of all four resistors to pin PA5
+2. Add MOSFET circuit (to be detailed later) to pin PA5
 3. Close connection points SB11 and SB15 
 
 ####How to build
