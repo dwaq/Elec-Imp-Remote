@@ -174,6 +174,14 @@ int main(void)
 	// use the LED as a designator for the backlight
 	STM_EVAL_LEDInit(LED3);
 	
+  // set up PA5 to control backlight
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+	
 	// put the time into the variable as a default
 	modifyTime(INCREMENT, MINUTES);
 	
@@ -188,15 +196,19 @@ int main(void)
 		{
 			still_counter++;
 			// after being still for X times, turn the light off
-			if (still_counter == 10000)
+			if (still_counter == 1000)//10000)
 			{
 				STM_EVAL_LEDOff(LED3);
+				// turn LCB backlight off
+				GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
 			}
 		}
 		else
 		{
 			still_counter = 0;
 			STM_EVAL_LEDOn(LED3);
+			// turn LCB backlight on
+			GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
 		}
 		
 		switch (LCD_state)
