@@ -196,7 +196,7 @@ int main(void)
 		{
 			still_counter++;
 			// after being still for X times, turn the light off
-			if (still_counter == 1000)//10000)
+			if (still_counter == 10000)
 			{
 				STM_EVAL_LEDOff(LED3);
 				// turn LCB backlight off
