@@ -177,8 +177,8 @@ int main(void)
   // set up PA5 to control backlight
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-  GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 	
@@ -200,7 +200,7 @@ int main(void)
 			{
 				STM_EVAL_LEDOff(LED3);
 				// turn LCB backlight off
-				GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
+				GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
 			}
 		}
 		else
@@ -208,7 +208,7 @@ int main(void)
 			still_counter = 0;
 			STM_EVAL_LEDOn(LED3);
 			// turn LCB backlight on
-			GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
+			GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
 		}
 		
 		switch (LCD_state)
