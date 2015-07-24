@@ -10,6 +10,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <string.h>
+#include "ifttt_key.h"
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -91,6 +93,9 @@ static void Gyro_SimpleCalibration(float* GyroData);
   */
 int main(void)
 {
+	char get1[100] = "conn:send(\"GET /trigger/ESP8266/with/key/";
+	char get2[] = "?value1=512 HTTP/1.1\\r\\n\")\r\n";
+	
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStruct;
@@ -122,7 +127,9 @@ int main(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 	
 	// program UART settings
-	USART_InitStructure.USART_BaudRate = 115200;
+	//USART_InitStructure.USART_BaudRate = 115200;
+	// ESP8266 is 9600 baud
+	USART_InitStructure.USART_BaudRate = 9600;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
@@ -132,15 +139,38 @@ int main(void)
 	USART_Cmd(USART1, ENABLE);
 	
 	// Enable UART RX interrupt
-	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-	NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
-	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
-	NVIC_Init(&NVIC_InitStruct);
+//	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+//	NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
+//	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+//	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
+//	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+//	NVIC_Init(&NVIC_InitStruct);
 	
 	// print something to show it's working
-	USART_print(USART1, "Hello World!\r\n");
+	//USART_print(USART1, "Hello World!\r\n");
+	
+	// try sending IFTTT request from here
+	USART_print(USART1, "conn=net.createConnection(net.TCP, 0)\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:on(\"receive\", function(conn, payload) print(payload) end)\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:connect(80,\"maker.ifttt.com\")\r\n");
+	Delay(2000);
+
+	// concatenates a string including the IFTTT key
+	strcat(get1, IFTTT_KEY);
+	USART_print(USART1, strcat(get1, get2));
+	
+	Delay(2000);
+	USART_print(USART1, "conn:send(\"Host: maker.ifttt.com\\r\\n\")\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:send(\"User-Agent: Mozilla/4.0 (compatible; esp8266 Lua; Windows NT 5.)\\r\\n\")\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:send(\"\\r\\n\")\r\n");
+	Delay(2000);
+	USART_print(USART1, "\r\n");
+	Delay(2000);
+
 
   /* LCD initialization */
   LCD_Init();
