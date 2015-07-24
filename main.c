@@ -61,7 +61,8 @@ uint8_t time_minutes = 45;
 // temporary storage variable for reads from Gyro
 uint8_t tmpbuffer[1] ={0};
 // stores fahrenheit value after being converted from Gyro
-uint8_t temperature_F = 0;
+uint8_t temperature_F = 128;
+char temperature_F_char[3];
 // to display accurate temperature at the bottom of the display
 uint8_t temperature_display[30] = "   Current temperature: xxF   ";
 
@@ -94,7 +95,8 @@ static void Gyro_SimpleCalibration(float* GyroData);
 int main(void)
 {
 	char get1[100] = "conn:send(\"GET /trigger/ESP8266/with/key/";
-	char get2[] = "?value1=512 HTTP/1.1\\r\\n\")\r\n";
+	char get2[] = "?value1=";
+	char get3[] = " HTTP/1.1\\r\\n\")\r\n";
 	
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
@@ -159,7 +161,13 @@ int main(void)
 
 	// concatenates a string including the IFTTT key
 	strcat(get1, IFTTT_KEY);
-	USART_print(USART1, strcat(get1, get2));
+	strcat(get1, get2);
+	temperature_F_char[0] = (temperature_F/100)+0x30;
+	temperature_F_char[1] = ((temperature_F/10)%10)+0x30;
+	temperature_F_char[2] = (temperature_F%10)+0x30;
+	strcat(get1, temperature_F_char);
+	strcat(get1, get3);
+	USART_print(USART1, get1);
 	
 	Delay(2000);
 	USART_print(USART1, "conn:send(\"Host: maker.ifttt.com\\r\\n\")\r\n");
