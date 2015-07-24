@@ -62,7 +62,7 @@ uint8_t time_minutes = 45;
 uint8_t tmpbuffer[1] ={0};
 // stores fahrenheit value after being converted from Gyro
 uint8_t temperature_F = 128;
-char temperature_F_char[3];
+char temperature_F_char[4] = "xxx\n";
 // to display accurate temperature at the bottom of the display
 uint8_t temperature_display[30] = "   Current temperature: xxF   ";
 
@@ -82,6 +82,8 @@ void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time);
 void USART_print(USART_TypeDef* USARTx, volatile char *s);
 static void Demo_GyroConfig(void);
 static void GyroReadTemperature(void);
+void writeTempToScreen(void);
+void sendTempToIFTTT(void);
 static void Demo_GyroReadAngRate (float* pfData);
 static void Gyro_SimpleCalibration(float* GyroData);
 
@@ -94,10 +96,6 @@ static void Gyro_SimpleCalibration(float* GyroData);
   */
 int main(void)
 {
-	char get1[100] = "conn:send(\"GET /trigger/ESP8266/with/key/";
-	char get2[] = "?value1=";
-	char get3[] = " HTTP/1.1\\r\\n\")\r\n";
-	
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStruct;
@@ -150,35 +148,6 @@ int main(void)
 	
 	// print something to show it's working
 	//USART_print(USART1, "Hello World!\r\n");
-	
-	// try sending IFTTT request from here
-	USART_print(USART1, "conn=net.createConnection(net.TCP, 0)\r\n");
-	Delay(2000);
-	USART_print(USART1, "conn:on(\"receive\", function(conn, payload) print(payload) end)\r\n");
-	Delay(2000);
-	USART_print(USART1, "conn:connect(80,\"maker.ifttt.com\")\r\n");
-	Delay(2000);
-
-	// concatenates a string including the IFTTT key
-	strcat(get1, IFTTT_KEY);
-	strcat(get1, get2);
-	temperature_F_char[0] = (temperature_F/100)+0x30;
-	temperature_F_char[1] = ((temperature_F/10)%10)+0x30;
-	temperature_F_char[2] = (temperature_F%10)+0x30;
-	strcat(get1, temperature_F_char);
-	strcat(get1, get3);
-	USART_print(USART1, get1);
-	
-	Delay(2000);
-	USART_print(USART1, "conn:send(\"Host: maker.ifttt.com\\r\\n\")\r\n");
-	Delay(2000);
-	USART_print(USART1, "conn:send(\"User-Agent: Mozilla/4.0 (compatible; esp8266 Lua; Windows NT 5.)\\r\\n\")\r\n");
-	Delay(2000);
-	USART_print(USART1, "conn:send(\"\\r\\n\")\r\n");
-	Delay(2000);
-	USART_print(USART1, "\r\n");
-	Delay(2000);
-
 
   /* LCD initialization */
   LCD_Init();
@@ -192,24 +161,7 @@ int main(void)
   /* Set LCD foreground layer */
   LCD_SetLayer(LCD_FOREGROUND_LAYER);
  
-  /* Configure the IO Expander and display error if not OK */
-  if (IOE_Config() != IOE_OK)
-  {
-    LCD_Clear(LCD_COLOR_RED);
-    LCD_SetTextColor(LCD_COLOR_BLACK); 
-    LCD_DisplayStringLine(LCD_LINE_6,(uint8_t*)"   IOE NOT OK      ");
-    LCD_DisplayStringLine(LCD_LINE_7,(uint8_t*)"Reset the board   ");
-    LCD_DisplayStringLine(LCD_LINE_8,(uint8_t*)"and try again     ");
-		while(1);
-  }
-	
-	/* Gyroscope configuration */
-  Demo_GyroConfig();
-	
-	 /* Gyroscope calibration */
-  Gyro_SimpleCalibration(Gyro);
-	
-	// use the LED as a designator for the backlight
+ 	// use the LED as a designator for the backlight
 	STM_EVAL_LEDInit(LED3);
 	
   // set up PA5 to control backlight
@@ -220,8 +172,34 @@ int main(void)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOA, &GPIO_InitStructure);
 	
+	// default to ON
+	GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
+ 
+  /* Configure the IO Expander and display error if not OK */
+  if (IOE_Config() != IOE_OK)
+  {
+    LCD_Clear(LCD_COLOR_RED);
+    LCD_SetTextColor(LCD_COLOR_BLACK); 
+    LCD_DisplayStringLine(LCD_LINE_6,(uint8_t*)"   IOE NOT OK      ");
+    LCD_DisplayStringLine(LCD_LINE_7,(uint8_t*)"Reset the board   ");
+    LCD_DisplayStringLine(LCD_LINE_8,(uint8_t*)"and try again     ");
+		//while(1);
+  }
+	
+	/* Gyroscope configuration */
+  Demo_GyroConfig();
+	
+	 /* Gyroscope calibration */
+  Gyro_SimpleCalibration(Gyro);
+	
 	// put the time into the variable as a default
 	modifyTime(INCREMENT, MINUTES);
+	
+	// get current temperature
+	GyroReadTemperature();
+	
+	// send temperature to IFTTT
+	sendTempToIFTTT();
 	
   while (1)
   {
@@ -278,7 +256,7 @@ int main(void)
 				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
 				
 				// display current temperature at the bottom
-				GyroReadTemperature();
+				writeTempToScreen();
 				
 				LCD_state = MAIN_TOUCH;
 			break;
@@ -348,7 +326,7 @@ int main(void)
 				LCD_DrawRect(box2_x1, box2_y1, box2_y2-box2_y1, box2_x2-box2_x1);
 				
 				// display current temperature at the bottom
-				GyroReadTemperature();
+				writeTempToScreen();
 				
 				LCD_state = TOGGLE_TOUCH;
 				break;
@@ -422,7 +400,7 @@ int main(void)
 				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
 				
 				// display current temperature at the bottom
-				GyroReadTemperature();
+				writeTempToScreen();
 				
 				LCD_state = BREW_NOW_TOUCH;
 			break;
@@ -519,7 +497,7 @@ int main(void)
 				LCD_DisplayStringLine(LINE(19), (uint8_t*)".....Select number of cups:...");
 				
 				// display current temperature at the bottom
-				GyroReadTemperature();
+				writeTempToScreen();
 				
 				LCD_SetFont(&Font16x24);
 				LCD_SetTextColor(LCD_COLOR_BLUE);
@@ -661,7 +639,7 @@ int main(void)
 				LCD_DrawRect(box3_x1, box3_y1, box3_y2-box3_y1, box3_x2-box3_x1);
 				
 				// display current temperature at the bottom
-				GyroReadTemperature();
+				writeTempToScreen();
 				
 				Delay(10000);
 				
@@ -936,13 +914,56 @@ static void GyroReadTemperature(void)
 	temp = (temp + 25) + correction_factor; //Deg C
 	temperature_F = (temp * (9/5)) + 32; //Deg F
 	
+}
+
+void writeTempToScreen(void)
+{
+	// get current temperature
+	GyroReadTemperature();
+	
 	// write temperature across bottom of screen
 	LCD_SetTextColor(LCD_COLOR_RED);
 	LCD_SetFont(&Font8x12);
 	temperature_display[24] = (temperature_F/10)+0x30;
 	temperature_display[25] = (temperature_F%10)+0x30;
 	LCD_DisplayStringLine(LINE(25), (uint8_t*)temperature_display);
+}
+
+void sendTempToIFTTT(void)
+{
+	// data to concatenate
+	char get1[100] = "conn:send(\"GET /trigger/ESP8266/with/key/";
+	char get2[] = "?value1=";
+	char get3[] = " HTTP/1.1\\r\\n\")\r\n";
 	
+	// send IFTTT request
+	// Delay()'s need to be replaced with UART read's
+	USART_print(USART1, "conn=net.createConnection(net.TCP, 0)\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:on(\"receive\", function(conn, payload) print(payload) end)\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:connect(80,\"maker.ifttt.com\")\r\n");
+	Delay(2000);
+
+	// concatenates a string including the IFTTT key and current temperature
+	strcat(get1, IFTTT_KEY);
+	strcat(get1, get2);
+	temperature_F_char[0] = (temperature_F/100)+0x30;
+	temperature_F_char[1] = ((temperature_F/10)%10)+0x30;
+	temperature_F_char[2] = (temperature_F%10)+0x30;
+	strcat(get1, temperature_F_char);
+	strcat(get1, get3);
+	USART_print(USART1, get1);
+	Delay(2000);
+
+	USART_print(USART1, "conn:send(\"Host: maker.ifttt.com\\r\\n\")\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:send(\"User-Agent: Mozilla/4.0 (compatible; esp8266 Lua; Windows NT 5.)\\r\\n\")\r\n");
+	Delay(2000);
+	USART_print(USART1, "conn:send(\"\\r\\n\")\r\n");
+	Delay(2000);
+	USART_print(USART1, "\r\n");
+	Delay(2000);
 }
 
 /**
