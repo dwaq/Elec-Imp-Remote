@@ -81,6 +81,18 @@ uint8_t RxBuffer_index = 0;
 // Character at end of UART message
 #define END_OF_UART_MESSAGE '\n'
 
+typedef enum
+{
+	DISCONNECTED = 0,
+	CONNECTED = 1
+} Wifi_status_TypeDef;
+
+Wifi_status_TypeDef wifi_status = CONNECTED;
+
+// data to concatenate for wifi settings
+char wifi1[100] = "\r\nwifi.sta.config(\"";
+char wifi2[] = "\",\"";
+char wifi3[] = "\")\r\n";
 
 // for Delay()
 static __IO uint32_t TimingDelay;
@@ -158,6 +170,27 @@ int main(void)
 	
 	// print something to show it's working
 	//USART_print(USART1, "Hello World!\r\n");
+	
+	// connect to wifi if it's not connected now
+	USART_print(USART1, "\r\nprint(wifi.sta.getip())\r\n");
+	
+	// interrupt will decide if its connected or not
+	while (UART_Ready() == 0);
+
+	if (wifi_status == DISCONNECTED)
+	{
+		USART_print(USART1, "\r\nwifi.setmode(wifi.STATION)\r\n");
+		while (UART_Ready() == 0);
+
+		// concatenates a string including the wifi SSID and password
+		strcat(wifi1, WIFI_SSID);
+		strcat(wifi1, wifi2);
+		strcat(wifi1, WIFI_Password);
+		strcat(wifi1, wifi3);
+		USART_print(USART1, wifi1);
+		while (UART_Ready() == 0);
+	}
+
 
   /* LCD initialization */
   LCD_Init();
@@ -1013,6 +1046,12 @@ void USART1_IRQHandler(void)
 //		{
 //			RxBuffer[i] = 0;
 //		}
+		
+		// only says nil when you ask for IP address and it's not connected
+		if ((RxBuffer[0] == 'n') && (RxBuffer[1] == 'i') && (RxBuffer[2] == 'l'))
+		{
+		wifi_status = DISCONNECTED;
+		}
 		
 		// set index back to 0
 		RxBuffer_index = 0;
