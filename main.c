@@ -73,6 +73,15 @@ float X_BiasError, Y_BiasError, Z_BiasError = 0.0;
 // counting how long the board isn't moving
 uint32_t still_counter = 0;
 
+// store each bit one at a time
+uint8_t UART_RX_Char[1];
+// store the full message ending in \n
+uint8_t RxBuffer[100];
+uint8_t RxBuffer_index = 0;
+// Character at end of UART message
+#define END_OF_UART_MESSAGE '\n'
+
+
 // for Delay()
 static __IO uint32_t TimingDelay;
 	
@@ -80,6 +89,7 @@ static __IO uint32_t TimingDelay;
 void Delay(__IO uint32_t nTime);
 void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time);
 void USART_print(USART_TypeDef* USARTx, volatile char *s);
+uint8_t UART_Ready(void);
 static void Demo_GyroConfig(void);
 static void GyroReadTemperature(void);
 void writeTempToScreen(void);
@@ -139,12 +149,12 @@ int main(void)
 	USART_Cmd(USART1, ENABLE);
 	
 	// Enable UART RX interrupt
-//	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
-//	NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
-//	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
-//	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
-//	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
-//	NVIC_Init(&NVIC_InitStruct);
+	USART_ITConfig(USART1, USART_IT_RXNE, ENABLE);
+	NVIC_InitStruct.NVIC_IRQChannel = USART1_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStruct.NVIC_IRQChannelSubPriority = 0;
+	NVIC_Init(&NVIC_InitStruct);
 	
 	// print something to show it's working
 	//USART_print(USART1, "Hello World!\r\n");
@@ -929,6 +939,9 @@ void writeTempToScreen(void)
 	LCD_DisplayStringLine(LINE(25), (uint8_t*)temperature_display);
 }
 
+//uint32_t cntr = 0;
+//char RX[100];
+
 void sendTempToIFTTT(void)
 {
 	// data to concatenate
@@ -936,14 +949,15 @@ void sendTempToIFTTT(void)
 	char get2[] = "?value1=";
 	char get3[] = " HTTP/1.1\\r\\n\")\r\n";
 	
-	// send IFTTT request
-	// Delay()'s need to be replaced with UART read's
+	// send IFTTT request starting with a newline to get the prompt up
+	USART_print(USART1, "\r\n");
+	while (UART_Ready() == 0);
 	USART_print(USART1, "conn=net.createConnection(net.TCP, 0)\r\n");
-	Delay(2000);
+	while (UART_Ready() == 0);
 	USART_print(USART1, "conn:on(\"receive\", function(conn, payload) print(payload) end)\r\n");
-	Delay(2000);
+	while (UART_Ready() == 0);
 	USART_print(USART1, "conn:connect(80,\"maker.ifttt.com\")\r\n");
-	Delay(2000);
+	while (UART_Ready() == 0);
 
 	// concatenates a string including the IFTTT key and current temperature
 	strcat(get1, IFTTT_KEY);
@@ -954,16 +968,60 @@ void sendTempToIFTTT(void)
 	strcat(get1, temperature_F_char);
 	strcat(get1, get3);
 	USART_print(USART1, get1);
-	Delay(2000);
+	while (UART_Ready() == 0);
 
 	USART_print(USART1, "conn:send(\"Host: maker.ifttt.com\\r\\n\")\r\n");
-	Delay(2000);
+	while (UART_Ready() == 0);
 	USART_print(USART1, "conn:send(\"User-Agent: Mozilla/4.0 (compatible; esp8266 Lua; Windows NT 5.)\\r\\n\")\r\n");
-	Delay(2000);
+	while (UART_Ready() == 0);
 	USART_print(USART1, "conn:send(\"\\r\\n\")\r\n");
-	Delay(2000);
+	while (UART_Ready() == 0);
 	USART_print(USART1, "\r\n");
-	Delay(2000);
+	while (UART_Ready() == 0);
+}
+
+uint8_t UART_Ready(void)
+{
+	if ((RxBuffer[0] == '>') && (RxBuffer[1] == ' '))
+	{
+		// clear buffer so it needs to get new data to pass
+		RxBuffer[0] = 0;
+		RxBuffer[1] = 0;
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+
+void USART1_IRQHandler(void)
+{
+	// read the data out of the Recieve data register
+	RxBuffer[RxBuffer_index] = USART_ReceiveData(USART1);
+
+	// end of message ('\r') -> do processing
+	if (RxBuffer[RxBuffer_index]== END_OF_UART_MESSAGE)
+	{
+		// go to the processing
+		//UartMsgHandler(RxBuffer);
+		
+		// clear buffer (makes debugging easier to see)
+//		uint16_t i = 0;
+//		for(i=0; i<100; i++)
+//		{
+//			RxBuffer[i] = 0;
+//		}
+		
+		// set index back to 0
+		RxBuffer_index = 0;
+	}
+	// increase index
+	else
+	{
+		RxBuffer_index++;
+	}
 }
 
 /**
