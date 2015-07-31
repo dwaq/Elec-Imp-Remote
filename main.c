@@ -62,7 +62,7 @@ uint8_t time_minutes = 45;
 uint8_t tmpbuffer[1] ={0};
 // stores fahrenheit value after being converted from Gyro
 uint8_t temperature_F = 128;
-char temperature_F_char[4] = "xxx\n";
+char temperature_F_char[] = "xxx";
 // to display accurate temperature at the bottom of the display
 uint8_t temperature_display[30] = "   Current temperature: xxF   ";
 
@@ -94,6 +94,9 @@ char wifi1[100] = "\r\nwifi.sta.config(\"";
 char wifi2[] = "\",\"";
 char wifi3[] = "\")\r\n";
 
+// for real time clock
+RTC_TimeTypeDef RTC_TimeStruct;
+
 // for Delay()
 static __IO uint32_t TimingDelay;
 	
@@ -102,9 +105,11 @@ void Delay(__IO uint32_t nTime);
 void modifyTime(Unary_Operator_TypeDef change, Time_TypeDef time);
 void USART_print(USART_TypeDef* USARTx, volatile char *s);
 uint8_t UART_Ready(void);
+void SetTimeFromInternet(void);
 static void Demo_GyroConfig(void);
 static void GyroReadTemperature(void);
 void writeTempToScreen(void);
+void writeTimeToScreen(void);
 void sendTempToIFTTT(void);
 static void Demo_GyroReadAngRate (float* pfData);
 static void Gyro_SimpleCalibration(float* GyroData);
@@ -121,6 +126,7 @@ int main(void)
 	GPIO_InitTypeDef  GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStruct;
+	RTC_InitTypeDef RTC_InitStructure;
 	
   //uint16_t linenum = 0;
   static TP_STATE* TP_State; 
@@ -191,6 +197,23 @@ int main(void)
 		while (UART_Ready() == 0);
 	}
 
+	// enable RTC
+	// Enable the Power Controller
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+	// Enable access to RTC domain
+	PWR_BackupAccessCmd(ENABLE);
+	// Select the RTC clock source - use internal clock
+	RCC_RTCCLKConfig(RCC_RTCCLKSource_LSI);
+	// Enable RTC Clock
+	RCC_RTCCLKCmd(ENABLE);
+	// Configure the RTC Prescaler and RTC hour format
+	RTC_InitStructure.RTC_HourFormat = RTC_HourFormat_12;
+	// The asynchronous prescaler division factor is set to 128, and the synchronous division
+	// factor to 256, to obtain an internal clock frequency of 1 Hz (ck_spre) with an LSE frequency
+	// of 32.768 kHz.
+	RTC_InitStructure.RTC_AsynchPrediv = 128;
+	RTC_InitStructure.RTC_SynchPrediv = 256;
+	RTC_Init(&RTC_InitStructure);
 
   /* LCD initialization */
   LCD_Init();
@@ -248,27 +271,27 @@ int main(void)
   {
     TP_State = IOE_TP_GetState();
 		
-		Demo_GyroReadAngRate(Buffer);
-		
-		// not moving
-		if ((ABS(Buffer[0]) < 2)&&(ABS(Buffer[1]) < 2)&&(ABS(Buffer[2]) < 1))
-		{
-			still_counter++;
-			// after being still for X times, turn the light off
-			if (still_counter == 10000)
-			{
-				STM_EVAL_LEDOff(LED3);
-				// turn LCB backlight off
-				GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
-			}
-		}
-		else
-		{
-			still_counter = 0;
-			STM_EVAL_LEDOn(LED3);
-			// turn LCB backlight on
-			GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
-		}
+//		Demo_GyroReadAngRate(Buffer);
+//		
+//		// not moving
+//		if ((ABS(Buffer[0]) < 2)&&(ABS(Buffer[1]) < 2)&&(ABS(Buffer[2]) < 1))
+//		{
+//			still_counter++;
+//			// after being still for X times, turn the light off
+//			if (still_counter == 10000)
+//			{
+//				STM_EVAL_LEDOff(LED3);
+//				// turn LCB backlight off
+//				GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_RESET);
+//			}
+//		}
+//		else
+//		{
+//			still_counter = 0;
+//			STM_EVAL_LEDOn(LED3);
+//			// turn LCB backlight on
+//			GPIO_WriteBit(GPIOA, GPIO_Pin_5, Bit_SET);
+//		}
 		
 		switch (LCD_state)
 		{
@@ -279,7 +302,7 @@ int main(void)
 				LCD_SetTextColor(LCD_COLOR_BLACK);
 			
 				// current time at top
-				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+				writeTimeToScreen();
 			
 				// back button - for sizing
 				//LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
@@ -353,7 +376,7 @@ int main(void)
 				LCD_SetTextColor(LCD_COLOR_BLACK);
 			
 				// current time at top
-				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+				writeTimeToScreen();
 			
 				// back button
 				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
@@ -425,7 +448,7 @@ int main(void)
 				LCD_SetTextColor(LCD_COLOR_BLACK);
 			
 				// current time at top
-				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+				writeTimeToScreen();
 			
 				// back button
 				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
@@ -513,7 +536,7 @@ int main(void)
 				LCD_SetTextColor(LCD_COLOR_BLACK);
 			
 				// current time at top
-				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+				writeTimeToScreen();
 			
 				// back button
 				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
@@ -666,7 +689,7 @@ int main(void)
 				LCD_SetTextColor(LCD_COLOR_BLACK);
 			
 				// current time at top
-				LCD_DisplayStringLine(LINE(1), (uint8_t*)"........HH:MM..");
+				writeTimeToScreen();
 			
 				// back button
 				LCD_FillTriangle(back_x1, back_x2, back_x3, back_y1, back_y2, back_y3);
@@ -972,13 +995,32 @@ void writeTempToScreen(void)
 	LCD_DisplayStringLine(LINE(25), (uint8_t*)temperature_display);
 }
 
-//uint32_t cntr = 0;
-//char RX[100];
+void writeTimeToScreen(void)
+{
+	uint8_t time_at_top[15] = "........HH:MM..";
+	uint8_t hours = RTC_TimeStruct.RTC_Hours;
+	uint8_t mins = RTC_TimeStruct.RTC_Minutes;
+	
+	// get current time
+	RTC_GetTime(RTC_Format_BIN, &RTC_TimeStruct);
+	
+	// hours
+	time_at_top[8] = (hours/10)+0x30;
+	time_at_top[9] = (hours%10)+0x30;
+	
+	// minutes
+	time_at_top[11] = (mins/10)+0x30;
+	time_at_top[12] = (mins%10)+0x30;
+	
+	// current time at top
+	LCD_DisplayStringLine(LINE(1), (uint8_t*)time_at_top);
+}
+
 
 void sendTempToIFTTT(void)
 {
 	// data to concatenate
-	char get1[100] = "conn:send(\"GET /trigger/ESP8266/with/key/";
+	char get1[150] = "conn:send(\"GET /trigger/ESP8266/with/key/";
 	char get2[] = "?value1=";
 	char get3[] = " HTTP/1.1\\r\\n\")\r\n";
 	
@@ -998,6 +1040,7 @@ void sendTempToIFTTT(void)
 	temperature_F_char[0] = (temperature_F/100)+0x30;
 	temperature_F_char[1] = ((temperature_F/10)%10)+0x30;
 	temperature_F_char[2] = (temperature_F%10)+0x30;
+	//temperature_F_char[3] = '\n';
 	strcat(get1, temperature_F_char);
 	strcat(get1, get3);
 	USART_print(USART1, get1);
@@ -1010,7 +1053,7 @@ void sendTempToIFTTT(void)
 	USART_print(USART1, "conn:send(\"\\r\\n\")\r\n");
 	while (UART_Ready() == 0);
 	USART_print(USART1, "\r\n");
-	while (UART_Ready() == 0);
+	//while (UART_Ready() == 0);
 }
 
 uint8_t UART_Ready(void)
@@ -1047,6 +1090,12 @@ void USART1_IRQHandler(void)
 //			RxBuffer[i] = 0;
 //		}
 		
+		if (RxBuffer[0] == 'D')
+		{
+			// this line is Date
+			SetTimeFromInternet();
+		}
+		
 		// only says nil when you ask for IP address and it's not connected
 		if ((RxBuffer[0] == 'n') && (RxBuffer[1] == 'i') && (RxBuffer[2] == 'l'))
 		{
@@ -1061,6 +1110,31 @@ void USART1_IRQHandler(void)
 	{
 		RxBuffer_index++;
 	}
+}
+
+void SetTimeFromInternet(void)
+{
+	uint8_t hours = ((RxBuffer[23]-0x30)*10)+(RxBuffer[24]-0x30);
+	
+	// convert 24 hour time to 12 hr time and figure out AM/PM
+	if (hours > 12)
+	{
+		hours -= 12;
+		RTC_TimeStruct.RTC_H12 = RTC_H12_PM;
+	}
+	else
+	{
+		RTC_TimeStruct.RTC_H12 = RTC_H12_AM;
+	}
+	RTC_TimeStruct.RTC_Hours = hours;
+	
+	RTC_TimeStruct.RTC_Minutes = ((RxBuffer[26]-0x30)*10)+(RxBuffer[27]-0x30);
+	
+	RTC_TimeStruct.RTC_Seconds = ((RxBuffer[29]-0x30)*10)+(RxBuffer[30]-0x30);
+
+	
+	RTC_SetTime(RTC_Format_BIN, &RTC_TimeStruct);
+	
 }
 
 /**
